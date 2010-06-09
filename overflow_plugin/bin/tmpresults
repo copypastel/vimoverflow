@@ -1,0 +1,14 @@
+#!/bin/sh
+
+echo "300  Why is the sky blue $*--END--"
+echo "3145 Lactose intolarance means to me $*--END--"
+echo "4    May happyness rain $*--END--"
+echo "--SECTION--"
+echo "I don't know why the sky is bule\n I tried to figure it out once but it was rough.--END--"
+echo "Unfortunately I can't eat cheese.--END--"
+echo "This one\nsense\ndoes not one make.--END--"
+echo "--SECTION--"
+echo "Answer 1--END--"
+echo "Answer 2--END--"
+echo "Answer 3--END--"
+echo "--SECTION--"

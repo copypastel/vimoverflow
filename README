@@ -1,0 +1,5 @@
+Checkout into a directory, if you have several git repo's you want to use for Vim then place it elsewhere in your file system and use
+
+ln -s /path/to/your/repo/overflow.vim ~/.vim/plugin/overflow.vim 
+
+and everything should work

@@ -14,7 +14,7 @@ let loaded_overflow = 1
 function s:SearchStackOverflow(text)
   call s:CreateResultWin()
 
-  let cmd = join(["~/bin/tmpresults", a:text], " ")
+  let cmd = join(["overflow_plugin/bin/tmpresults", a:text], " ")
   let query_result = system(cmd)
 
   let query = s:Query.New(query_result)
