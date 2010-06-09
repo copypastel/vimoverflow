@@ -28,7 +28,7 @@ my @questions = ();
 foreach my $question(@{$google_results->{responseData}->{results}}){
   $question->{url} =~ /stackoverflow.com\/questions\/(\d+)\//;
   push(@questions, $1);
-  $final_result = $final_result . $question->{titleNoFormatting} . "--END--\n";
+  $final_result = $final_result . $question->{title} . "--END--\n";
 }
 
 $final_result = $final_result . "--SECTION--\n";
@@ -39,7 +39,9 @@ my @answers = ();
 foreach my $question_id(@questions){
   my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/questions/$question_id?body=true`;
   my $question = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
-  $final_result = $final_result . $question->{questions}[0]->{body} . "--END--\n";
+  my $body = $question->{questions}[0]->{body};
+  $body =~ s/<p>|<\/p>//g;
+  $final_result = $final_result . $body . "--END--\n";
   push(@answers, "$question->{questions}[0]->{accepted_answer_id}");
 } 
 
@@ -49,7 +51,9 @@ $final_result = $final_result . "--SECTION--\n";
 foreach my $answer_id(@answers){
   my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/answers/$answer_id?body=true`;
   my $answer = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
-  $final_result = $final_result . $answer->{answers}[0]->{body} . "--END--\n";
+  my $body = $answer->{answers}[0]->{body};
+  $body =~ s/<p>|<\/p>//g;
+  $final_result = $final_result . $body . "--END--\n";
 }
 
 $final_result = $final_result . "--SECTION--\n";
