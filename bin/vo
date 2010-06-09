@@ -1,6 +1,13 @@
 #!/usr/bin/env perl 
 #use strict;
+BEGIN{
+use File::Basename 'dirname';
+use Cwd 'abs_path';
+my $path = abs_path($0);
+unshift(@INC, abs_path(dirname($path) . "/../lib"));
+
 use JSON -support_by_pp;
+}
 
 my $json = new JSON;
 
@@ -44,7 +51,7 @@ foreach my $answer_id(@answers){
   $final_result = $final_result . $answer->{answers}[0]->{body} . "--END--\n";
 }
 
-$final_section = $final_result . "--SECTION--\n";
+$final_result = $final_result . "--SECTION--\n";
 
 # And...
 print($final_result);
