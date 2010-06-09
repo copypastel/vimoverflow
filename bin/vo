@@ -1,0 +1,44 @@
+#!/usr/bin/env perl 
+#use strict;
+use JSON -support_by_pp;
+
+my $json = new JSON;
+
+# Our final result string. We'll be adding to it as we go along.
+my $final_result = "";
+
+# ARGV[0] holds the query string.
+my $google_results = `curl -s -G --data-urlencode 'q=site:stackoverflow.com $ARGV[0]' http://ajax.googleapis.com/ajax/services/search/web?v=1.0&rsz=small`;
+
+# Google returns a JSON string. Let's parse it!
+$google_results = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($google_results);
+
+# Holds our question IDs for later fetching.
+my @questions = ();
+
+# Let's yank our question titles from the Google search results. We also get our question ids here.
+foreach my $question(@{$google_results->{responseData}->{results}}){
+  $question->{url} =~ /stackoverflow.com\/questions\/(\d+)\//;
+  push(@questions, $1);
+  $final_result = $final_result . $question->{titleNoFormatting} . "--END--\n";
+}
+
+# Holds our answer IDs for later fetching.
+my @answers = ();
+
+foreach my $question_id(@questions){
+  my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/questions/$question_id?body=true`;
+  my $question = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
+  $final_result = $final_result . $question->{questions}[0]->{body} . "--END--\n";
+  push(@answers, "$question->{questions}[0]->{accepted_answer_id}");
+} 
+
+# And now let's print the accepted answers.
+foreach my $answer_id(@answers){
+  my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/answers/$answer_id?body=true`;
+  my $answer = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
+  $final_result = $final_result . $answer->{answers}[0]->{body} . "--END--\n";
+}
+
+# And...
+print($final_result);
