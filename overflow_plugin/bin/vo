@@ -1,12 +1,13 @@
 #!/usr/bin/env perl 
 #use strict;
+#print "HI\n";
 BEGIN{
 use File::Basename 'dirname';
 use Cwd 'abs_path';
 my $path = abs_path($0);
 unshift(@INC, abs_path(dirname($path) . "/../lib"));
 
-use JSON -support_by_pp;
+require 'JSON.pm';
 }
 
 my $json = new JSON;
