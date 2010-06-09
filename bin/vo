@@ -23,6 +23,8 @@ foreach my $question(@{$google_results->{responseData}->{results}}){
   $final_result = $final_result . $question->{titleNoFormatting} . "--END--\n";
 }
 
+$final_result = $final_result . "--SECTION--\n";
+
 # Holds our answer IDs for later fetching.
 my @answers = ();
 
@@ -33,12 +35,16 @@ foreach my $question_id(@questions){
   push(@answers, "$question->{questions}[0]->{accepted_answer_id}");
 } 
 
+$final_result = $final_result . "--SECTION--\n";
+
 # And now let's print the accepted answers.
 foreach my $answer_id(@answers){
   my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/answers/$answer_id?body=true`;
   my $answer = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
   $final_result = $final_result . $answer->{answers}[0]->{body} . "--END--\n";
 }
+
+$final_section = $final_result . "--SECTION--\n";
 
 # And...
 print($final_result);
