@@ -14,7 +14,7 @@ my $json = new JSON;
 my $final_result = "";
 
 # ARGV[0] holds the query string.
-my $google_results = `curl -s -G --data-urlencode 'q=site:stackoverflow.com -site:stackoverflow.com/questions/tagged $ARGV[0]' http://ajax.googleapis.com/ajax/services/search/web?v=1.0&rsz=small`;
+my $google_results = `curl -s -G --data-urlencode 'q=site:stackoverflow.com/questions -site:stackoverflow.com/questions/tagged $ARGV[0]' http://ajax.googleapis.com/ajax/services/search/web?v=1.0&rsz=small`;
 
 # Google returns a JSON string. Let's parse it!
 $google_results = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($google_results);
