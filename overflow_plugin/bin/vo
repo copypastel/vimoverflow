@@ -1,12 +1,10 @@
 #!/usr/bin/env perl 
-#use strict;
-#print "HI\n";
+use strict;
 BEGIN{
 use File::Basename 'dirname';
 use Cwd 'abs_path';
 my $path = abs_path($0);
 unshift(@INC, abs_path(dirname($path) . "/../lib"));
-
 require 'JSON.pm';
 }
 
@@ -25,7 +23,7 @@ $google_results = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow
 my @questions = ();
 
 # Let's yank our question titles from the Google search results. We also get our question ids here.
-foreach my $question(@{$google_results->{responseData}->{results}}){
+foreach my $question (@{$google_results->{responseData}->{results}}){
   $question->{url} =~ /stackoverflow.com\/questions\/(\d+)\//;
   push(@questions, $1);
   $final_result = $final_result . $question->{title} . "--END--\n";
@@ -33,27 +31,29 @@ foreach my $question(@{$google_results->{responseData}->{results}}){
 
 $final_result = $final_result . "--SECTION--\n";
 
-# Holds our answer IDs for later fetching.
-my @answers = ();
+# Holds our answer bodies for later printing.
+my @answer_bodies = ();
+my $question_ids = join(';', @questions);
+ 
+my $response = `curl -s --compressed "http://api.stackoverflow.com/0.8/questions/$question_ids?body=true&answers=true"`;
+$response = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
 
-foreach my $question_id(@questions){
-  my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/questions/$question_id?body=true`;
-  my $question = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
-  my $body = $question->{questions}[0]->{body};
-  $body =~ s/<p>|<\/p>//g;
-  $final_result = $final_result . $body . "--END--\n";
-  push(@answers, "$question->{questions}[0]->{accepted_answer_id}");
-} 
+foreach my $question (@{$response->{questions}}){
+  my @answers = @{$question->{answers}};
+  foreach my $answer(@answers){
+    if($answer->{accepted}){
+      push(@answer_bodies, $answer->{body});
+      last;
+    }
+  }
+  $final_result = $final_result . $question->{body} . "--END--\n";
+}
 
 $final_result = $final_result . "--SECTION--\n";
 
 # And now let's print the accepted answers.
-foreach my $answer_id(@answers){
-  my $response = `curl -s --compressed http://api.stackoverflow.com/0.8/answers/$answer_id?body=true`;
-  my $answer = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($response);
-  my $body = $answer->{answers}[0]->{body};
-  $body =~ s/<p>|<\/p>//g;
-  $final_result = $final_result . $body . "--END--\n";
+foreach my $answer_body(@answer_bodies){
+  $final_result = $final_result . $answer_body . "--END--\n";
 }
 
 $final_result = $final_result . "--SECTION--\n";
