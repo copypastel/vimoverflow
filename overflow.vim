@@ -6,7 +6,7 @@
 
 let s:vim_overflow_version = '0.1.0'
 
-"SECTION: Initilization {{{1
+"SECTION: Initilization                                                   {{{1
 "================================================
 if exists("loaded_overflow")
   finish
@@ -16,15 +16,15 @@ let loaded_overflow = 1
 let s:usr_cpo = &cpo
 set cpo&vim
 
-"SECTION: User Entrance Functions {{{1
+"SECTION: User Entrance Functions                                         {{{1
 "================================================
-"FUNCTION: SearchStackOverflow(text) {{{2
+"FUNCTION: SearchStackOverflow(text)                                      {{{2
 "Called by user when executes Vimoverflow <searchterm> or Vo <searchterm>
 "Opens a new window if not created and populates with search results
 function s:SearchStackOverflow(text)
   call s:CreateResultWin()
 
-  let cmd = join(["overflow_plugin/bin/vo", '"' . a:text . '"'], " ")
+  let cmd = join(["bin/vo", '"' . a:text . '"'], " ")
   let query_result = system(cmd)
 
   let query = s:Query.New(query_result)
@@ -32,28 +32,28 @@ function s:SearchStackOverflow(text)
   call query.drawTitles()
 endfunction
 
-"FUNCTION: ShowAnswer() {{{2
+"FUNCTION: ShowAnswer()                                                   {{{2
 "Called when user presses enter on a question they wish to see the answer of
 function s:ShowAnswer()
   call b:currentQuery.showAnswer(line("."))
 endfunction
 
-"FUNCTION: ShowQuestion() {{{2
+"FUNCTION: ShowQuestion()                                                 {{{2
 "Called when a user presses the l key on a title they wish to see more info of
 function s:ShowQuestion()
   call b:currentQuery.showQuestion(line("."))
 endfunction
 
-"FUNCTION: HideQuestion() {{{2
+"FUNCTION: HideQuestion()                                                 {{{2
 "Called when a user presses the h key on a title or body they wish to collaps
 "Does nothing if the question is already collapsed.
 function s:HideQuestion()
   call b:currentQuery.hideQuestion(line("."))
 endfunction
 
-"SECTION: Support Functions {{{1
+"SECTION: Support Functions                                               {{{1
 "================================================
-"FUNCTION: CreateResultWin() {{{2
+"FUNCTION: CreateResultWin()                                              {{{2
 "Creates or changes focus to the result buffer
 function s:CreateResultWin()
   let bufname = 'results.stackoverflow'
@@ -61,7 +61,7 @@ function s:CreateResultWin()
   silent buffer results.stackoverflow
 endfunction
 
-"FUNCTION: BindKeys(query) {{{2
+"FUNCTION: BindKeys(query)                                                {{{2
 "With the result buffer selected this will store the query and map the
 "navigation functions to the proper keypresses
 "
@@ -73,13 +73,13 @@ function s:BindKeys(query)
   exec "nnoremap <silent> <buffer> h :call <SID>HideQuestion()<cr>"
 endfunction
 
-"SECTION: Classes {{{1
+"SECTION: Classes                                                         {{{1
 "================================================
-"CLASS: Query {{{2
+"CLASS: Query                                                             {{{2
 "Query contains the titles of the posts, the post bodies, and the responses
 let s:Query = {}
 
-"FUNCTION: Query.New(raw) {{{3
+"FUNCTION: Query.New(raw)                                                 {{{3
 "Create a new query
 "
 "raw = raw text result returned from perl query.
@@ -92,6 +92,9 @@ function s:Query.New(raw)
   let newQuery.answers   = split(parsed_result[2],"--END--\n")
   let newQuery.cursor    = 0
 
+  "initialize all the expanded indexes to 0
+  "an expanded index means that the title should display the question
+  "underneath it
   let newQuery.expanded_indexes = []
   let i = 0
   while i < len(newQuery.questions)
@@ -102,7 +105,7 @@ function s:Query.New(raw)
   return newQuery
 endfunction
 
-"FUNCTION: Query.drawTitles() {{{3
+"FUNCTION: Query.drawTitles()                                             {{{3
 "Draws the titles and expanded posts
 function s:Query.drawTitles()
   " Draw the results here
@@ -113,10 +116,11 @@ function s:Query.drawTitles()
   
   let i = 0
   while i < len(self.titles)
-    let @o = self.titles[i]
+    let @o = self._formatText(self.titles[i])
     silent put o
     if self.expanded_indexes[i]
-      for line in split(self.questions[i],"\n")
+      let question = self._formatText(self.questions[i])
+      for line in split(question,"\n")
         let @o = "  " . line
         silent put o
       endfor
@@ -132,7 +136,7 @@ function s:Query.drawTitles()
   setlocal nomodifiable
 endfunction
 
-"FUNCTION: Query.showAnswer(line) {{{3
+"FUNCTION: Query.showAnswer(line)                                         {{{3
 "Draws the answer in the current buffer
 " Args:
 " line = line number that the cursor was on
@@ -152,7 +156,7 @@ function s:Query.showAnswer(line)
   hi def wtfMan term=bold cterm=bold
 endfunction
 
-"FUNCTION: Query.showQuestion(line) {{{3
+"FUNCTION: Query.showQuestion(line)                                       {{{3
 "expands the post title to show the complete question and redraws the buffer
 " Args:
 " line = line number that the cursor was on
@@ -163,7 +167,7 @@ function s:Query.showQuestion(line)
   call self.drawTitles()
 endfunction
 
-"FUNCTION: Query.hideQuestion(line) {{{3
+"FUNCTION: Query.hideQuestion(line)                                       {{{3
 "contracts the post title to hide the complete question and redraws the buffer
 " Args:
 " line = line number that the cursor was on
@@ -174,7 +178,7 @@ function s:Query.hideQuestion(line)
   call self.drawTitles()
 endfunction
 
-"FUNCTION: Query._indexFromLine(line) {{{3
+"FUNCTION: Query._indexFromLine(line)                                     {{{3
 "returns the question number
 function s:Query._indexFromLine(line)
   let realindex = 0
@@ -191,7 +195,7 @@ function s:Query._indexFromLine(line)
   return realindex - 1
 endfunction
 
-"FUNCTION: Query._titleLineNumberFromIndex(index) {{{3
+"FUNCTION: Query._titleLineNumberFromIndex(index)                         {{{3
 "returns the current title line number 
 "used when we want to know the line of a title
 function s:Query._titleLineNumberFromIndex(index)
@@ -208,7 +212,14 @@ function s:Query._titleLineNumberFromIndex(index)
   return result + 1
 endfunction
 
-"SECTION: Command Mappings {{{1
+"FUNCTION: Query._formatText(text)                                        {{{3
+"Formats the text and returns the proper result
+function s:Query._formatText(text)
+  let result = substitute(a:text,"<p>","","g")  
+  let result = substitute(result,"</p>","","g")  
+  return result
+endfunction
+"SECTION: Command Mappings                                                {{{1
 "================================================
 if !exists(":Vimoverflow")
   command -nargs=1 Vimoverflow :call s:SearchStackOverflow(<q-args>)
