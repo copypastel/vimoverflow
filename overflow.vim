@@ -24,7 +24,7 @@ set cpo&vim
 function s:SearchStackOverflow(text)
   call s:CreateResultWin()
 
-  let cmd = join([$HOME . ".vim/plugin/bin/vo", '"' . a:text . '"'], " ")
+  let cmd = join([$HOME . "/.vim/plugin/vimoverflow/bin/vo", '"' . a:text . '"'], " ")
   let query_result = system(cmd)
 
   let query = s:Query.New(query_result)
