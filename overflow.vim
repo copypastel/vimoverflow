@@ -96,6 +96,11 @@ function s:Question.New(title,body,answer)
   let newQuestion.show_answer   = 0
   let newQuestion.lines         = 3
 
+  let newQuestion.has_answer    = 1
+  if newQuestion.answer = ""
+    let newQuestion.has_answer  = 0
+  endif
+
   return newQuestion
 endfunction
 
@@ -104,7 +109,12 @@ endfunction
 " Args:
 " level of indent we want the menu to be on
 function s:Question.render(indent)
-  let result = "(solved) " . self.title . "\n"
+  if self.has_answer
+    let result = "(solved) " . self.title . "\n"
+  else
+    let result = "(pending) " . self.title . "\n"
+  endif
+  
   if self.show_question
     let result = result . a:indent . "-- Hide Question --" . "\n"
     for line in split(self.body,"\n")
