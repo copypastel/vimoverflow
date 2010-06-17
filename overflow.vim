@@ -29,13 +29,13 @@ function s:SearchStackOverflow(text)
 
   let query = s:Query.New(query_result)
   call s:BindKeys(query)
-  call query.drawTitles()
+  call query.render()
 endfunction
 
-"FUNCTION: ShowAnswer()                                                   {{{2
+"FUNCTION: EnterPressed()                                                 {{{2
 "Called when user presses enter on a question they wish to see the answer of
-function s:ShowAnswer()
-  call b:currentQuery.showAnswer(line("."))
+function s:EnterPressed()
+  call b:currentQuery.enterPressed(line("."))
 endfunction
 
 "FUNCTION: ShowQuestion()                                                 {{{2
@@ -57,8 +57,8 @@ endfunction
 "Creates or changes focus to the result buffer
 function s:CreateResultWin()
   let bufname = 'results.stackoverflow'
-  badd  results.stackoverflow
-  silent buffer results.stackoverflow
+  badd results.stackoverflow
+  sb!  results.stackoverflow
 endfunction
 
 "FUNCTION: BindKeys(query)                                                {{{2
@@ -68,92 +68,186 @@ endfunction
 "query = a Query class with the results to navigate
 function s:BindKeys(query)
   let b:currentQuery = a:query
-  exec "nnoremap <silent> <buffer> <cr> :call <SID>ShowAnswer()<cr>" 
+  exec "nnoremap <silent> <buffer> <cr> :call <SID>EnterPressed()<cr>" 
   exec "nnoremap <silent> <buffer> l :call <SID>ShowQuestion()<cr>"
   exec "nnoremap <silent> <buffer> h :call <SID>HideQuestion()<cr>"
 endfunction
 
 "SECTION: Classes                                                         {{{1
 "================================================
+"CLASS: Question                                                          {{{2
+"Question contains the title, body, and answer of the posts
+let s:Question = {}
+"FUNCTION: s:Question.New(title,body,answer)                              {{{3
+" Args:
+" title = title of the question
+" body  = body of the question
+" answer = answer of the question
+function s:Question.New(title,body,answer)
+  let newQuestion = copy(self)
+
+  let newQuestion.title         = a:title
+  let newQuestion.body          = a:body
+  let newQuestion.answer        = a:answer
+  let newQuestion.show_question = 0
+  let newQuestion.show_answer   = 0
+  let newQuestion.lines         = 3
+
+  return newQuestion
+endfunction
+
+"FUNCTION: s:Question.render(indent)                                      {{{3
+"Renders the menu
+" Args:
+" level of indent we want the menu to be on
+function s:Question.render(indent)
+  let result = "(solved) " . self.title . "\n"
+  if self.show_question
+    let result = result . a:indent . "-- Hide Question --" . "\n"
+    for line in split(self.body,"\n")
+      let result = result . a:indent . line . "\n"
+    endfor
+  else
+    let result = result . a:indent . "-- Show Question --" . "\n"
+  endif
+  
+  "Have to put the \n in reverse order here since the put command
+  "inserts a new line.  Answer will not end with a \n
+  if self.show_answer
+    let result = result . a:indent . "-- Hide Answer --" 
+    for line in split(self.answer,"\n")
+      let result = result . "\n" . a:indent . line
+    endfor
+  else
+    let result = result . a:indent . "-- Show Answer --"
+  endif
+  
+  let self.lines = len(split(result,"\n"))
+
+  return result
+endfunction
+
+"FUNCTION: Question.enterPressed(line)                                    {{{3
+"changes options which affect render
+" Args:
+" line = line relative to this question
+function s:Question.enterPressed(line)
+  echo a:line
+  if self._body_selected(a:line)
+    let self.show_question = !self.show_question
+  elseif self._answer_selected(a:line)
+    let self.show_answer = !self.show_answer
+  endif
+endfunction
+
+"FUNCTION: Question._body_selected(line)                                  {{{3
+"returns true if the line given is on the body
+" Args:
+" line = line lerative to this question
+function s:Question._body_selected(line)
+  if a:line == 2
+    return 1
+  endif
+  return 0
+endfunction
+
+"FUNCTION: Question._answer_selected(line)                                {{{3
+"returns true if the line given is on the answer
+" Args:
+" line = line lerative to this question
+function s:Question._answer_selected(line)
+  let selection = a:line
+  if self.show_question
+    let selection -= len(split(self.body,"\n"))    
+  endif
+  if selection == 3
+    return 1
+  endif
+  return 0
+endfunction
+
 "CLASS: Query                                                             {{{2
 "Query contains the titles of the posts, the post bodies, and the responses
 let s:Query = {}
-
 "FUNCTION: Query.New(raw)                                                 {{{3
 "Create a new query
 "
-"raw = raw text result returned from perl query.
+" Args:
+" raw = raw text result returned from perl query.
 function s:Query.New(raw)
   let newQuery      = copy(self)
   let parsed_result = split(a:raw,"--END--\n--SECTION--\n")
 
-  let newQuery.titles    = split(parsed_result[0],"--END--\n")
-  let newQuery.questions = split(parsed_result[1],"--END--\n")
-  let newQuery.answers   = split(parsed_result[2],"--END--\n")
-  let newQuery.cursor    = 0
+  let newQuery.cursor = 0
 
-  "initialize all the expanded indexes to 0
-  "an expanded index means that the title should display the question
-  "underneath it
-  let newQuery.expanded_indexes = []
-  let i = 0
-  while i < len(newQuery.questions)
-    call insert(newQuery.expanded_indexes, 0)
-    let i += 1
-  endwhile
+  let titles    = split(parsed_result[0],"--END--\n")
+  let bodies    = split(parsed_result[1],"--END--\n")
+  let answers   = split(parsed_result[2],"--END--\n")
+
+  "Initialize the questions parsed from raw
+  let newQuery.questions = []
+  for i in range(len(titles))
+    "TODO: fix answers[0] to answers[i] after vo is fixed.
+    call insert(newQuery.questions,s:Question.New(titles[i],bodies[i],answers[0]))
+  endfor
+
+  let newQuery.question_to_line = []
+  for i in range(len(newQuery.questions))
+    call insert(newQuery.question_to_line,0)
+  endfor
 
   return newQuery
 endfunction
 
-"FUNCTION: Query.drawTitles()                                             {{{3
+"FUNCTION: Query.render()                                                 {{{3
 "Draws the titles and expanded posts
-function s:Query.drawTitles()
+function s:Query.render()
   " Draw the results here
   setlocal modifiable
 
   " delete all lines
   silent 1,$delete _
   
-  let i = 0
-  while i < len(self.titles)
-    let @o = self._formatText(self.titles[i])
+  for question in self.questions
+    let @o = self._formatText(question.render("  "))
     silent put o
-    if self.expanded_indexes[i]
-      let question = self._formatText(self.questions[i])
-      for line in split(question,"\n")
-        let @o = "  " . line
-        silent put o
-      endfor
-    endif
-
-    let i += 1
-  endwhile
+  endfor
 
   "delete the blank line at the top of the buffer
   silent 1,1delete _
 
   call cursor(self.cursor, col("."))
   setlocal nomodifiable
+  
+  syn match VoOption /-- Show Question --/
+  syn match VoOption /-- Hide Question --/
+  syn match VoOption /-- Show Answer --/
+  syn match VoOption /-- Hide Answer --/
+  hi def VoOption ctermfg=Yellow
+
+  syn match VoTitle /(solved)/
+  hi def VoTitle ctermfg=Green
+
+  syn match VoTitlePend /(pending)/
+  hi def VoTitlePend ctermfg=Blue
 endfunction
 
-"FUNCTION: Query.showAnswer(line)                                         {{{3
-"Draws the answer in the current buffer
+"FUNCTION: Query.enterPressed(line)                                       {{{3
+"Figures out which selection was made and displays/hides the question/answer
 " Args:
 " line = line number that the cursor was on
-function s:Query.showAnswer(line)
-  let index = self._indexFromLine(a:line)
-  setlocal modifiable
-  silent 1,$delete _
+function s:Query.enterPressed(line)
+  let self.cursor = a:line
+  let relLine = a:line
+  for question in self.questions
+    if relLine - question.lines <= 0
+      call question.enterPressed(relLine)
+      break
+    endif
+    let relLine -= question.lines
+  endfor
 
-  let @o = self.answers[index]
-  silent put o
-
-  " Delete first line
-  silent 1,1delete _
-  setlocal nomodifiable
-
-  syn match wtfMan /<p>.\{-}<\/p>/
-  hi def wtfMan term=bold cterm=bold
+  call self.render()
 endfunction
 
 "FUNCTION: Query.showQuestion(line)                                       {{{3
@@ -189,14 +283,14 @@ function s:Query._indexFromLine(line)
       " Subtract out the number of lines in the expanded view
       let line -= len(split(self.questions[realindex],"\n"))
     endif
-    let realindex += 1 
+    let realindex += 1
   endwhile
 
   return realindex - 1
 endfunction
 
 "FUNCTION: Query._titleLineNumberFromIndex(index)                         {{{3
-"returns the current title line number 
+"returns the current title line number
 "used when we want to know the line of a title
 function s:Query._titleLineNumberFromIndex(index)
   let result = a:index
@@ -215,8 +309,18 @@ endfunction
 "FUNCTION: Query._formatText(text)                                        {{{3
 "Formats the text and returns the proper result
 function s:Query._formatText(text)
-  let result = substitute(a:text,"<p>","","g")  
-  let result = substitute(result,"</p>","","g")  
+  let result = substitute(a:text,"<p>","","g")
+  let result = substitute(result,"</p>","","g")
+  let result = substitute(result,"<b>","","g")
+  let result = substitute(result,"</b>","","g")
+  let result = substitute(result,"<strong>","","g")
+  let result = substitute(result,"</strong>","","g")
+  let result = substitute(result,"<i>","","g")
+  let result = substitute(result,"</i>","","g")
+  let result = substitute(result,"<ol>","","g")
+  let result = substitute(result,"</ol>","","g")
+  let result = substitute(result,"<li>","","g")
+  let result = substitute(result,"</li>","","g")
   return result
 endfunction
 "SECTION: Command Mappings                                                {{{1
