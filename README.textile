@@ -1,7 +1,5 @@
 h1. Installation
 
-    cd ~/.vim/plugin
-    git clone git://github.com/copypastel/vimoverflow.git
-    ln -s ~/.vim/plugin/vimoverflow/overflow.vim ~/.vim/plugin/
-    
-And you should be good to go
+bc.. cd ~/.vim/plugin && git clone git://github.com/copypastel/vimoverflow.git && ln -s ~/.vim/plugin/vimoverflow/overflow.vim ~/.vim/plugin/
+
+p. And you should be good to go
