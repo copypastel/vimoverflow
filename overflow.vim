@@ -190,8 +190,7 @@ function s:Query.New(raw)
   "Initialize the questions parsed from raw
   let newQuery.questions = []
   for i in range(len(titles))
-    "TODO: fix answers[0] to answers[i] after vo is fixed.
-    call insert(newQuery.questions,s:Question.New(titles[i],bodies[i],answers[0]))
+    call insert(newQuery.questions,s:Question.New(titles[i],bodies[i],answers[i]))
   endfor
 
   let newQuery.question_to_line = []
