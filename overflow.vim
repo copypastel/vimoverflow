@@ -38,27 +38,32 @@ function s:EnterPressed()
   call b:currentQuery.enterPressed(line("."))
 endfunction
 
-"FUNCTION: ShowQuestion()                                                 {{{2
-"Called when a user presses the l key on a title they wish to see more info of
-function s:ShowQuestion()
-  call b:currentQuery.showQuestion(line("."))
-endfunction
-
-"FUNCTION: HideQuestion()                                                 {{{2
-"Called when a user presses the h key on a title or body they wish to collaps
-"Does nothing if the question is already collapsed.
-function s:HideQuestion()
-  call b:currentQuery.hideQuestion(line("."))
-endfunction
-
+let s:BufVisible = 0
+let s:BufCreated = 0
 "SECTION: Support Functions                                               {{{1
 "================================================
 "FUNCTION: CreateResultWin()                                              {{{2
 "Creates or changes focus to the result buffer
+"Makes the buffer temporary and will always use split buffer
 function s:CreateResultWin()
-  let bufname = 'results.stackoverflow'
-  badd results.stackoverflow
-  sb!  results.stackoverflow
+  if !s:BufCreated
+    badd results.stackoverflow
+    let s:BufCreated = 1
+  endif
+  if !s:BufVisible 
+    sb!  results.stackoverflow
+    let s:BufVisible = 1
+    set bufhidden=hide
+    set buftype=nofile
+    setlocal noswapfile
+    autocmd BufHidden results.stackoverflow call s:BufferGone()
+  endif
+endfunction
+
+"FUNCTION: BufferGone()
+"Event which runs when the report buffer exits
+function s:BufferGone()
+  let s:BufVisible = 0
 endfunction
 
 "FUNCTION: BindKeys(query)                                                {{{2
@@ -69,8 +74,6 @@ endfunction
 function s:BindKeys(query)
   let b:currentQuery = a:query
   exec "nnoremap <silent> <buffer> <cr> :call <SID>EnterPressed()<cr>" 
-  exec "nnoremap <silent> <buffer> l :call <SID>ShowQuestion()<cr>"
-  exec "nnoremap <silent> <buffer> h :call <SID>HideQuestion()<cr>"
 endfunction
 
 "SECTION: Classes                                                         {{{1
