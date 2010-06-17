@@ -40,11 +40,15 @@ $response = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singl
 
 foreach my $question (@{$response->{questions}}){
   my @answers = @{$question->{answers}};
+  my $length = length(@answer_bodies);
   foreach my $answer(@answers){
     if($answer->{accepted}){
       push(@answer_bodies, $answer->{body});
       last;
     }
+  }
+  if($length == length(@answer_bodies)){
+    push(@answer_bodies, '');
   }
   $final_result = $final_result . $question->{body} . "--END--\n";
 }
