@@ -97,7 +97,7 @@ function s:Question.New(title,body,answer)
   let newQuestion.lines         = 3
 
   let newQuestion.has_answer    = 1
-  if newQuestion.answer = ""
+  if newQuestion.answer == ""
     let newQuestion.has_answer  = 0
   endif
 
